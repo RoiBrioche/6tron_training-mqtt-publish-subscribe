@@ -17,10 +17,11 @@
 #include "mbed.h"
 #include <nsapi_dns.h>
 #include <MQTTClientMbedOs.h>
+#include "key.h"
 
 namespace {
 #define GROUP_NAME            "ABCD"
-#define MQTT_TOPIC_PUBLISH      "/estia/"GROUP_NAME"/uplink"
+#define MQTT_TOPIC_TEMPERATURE      "RoiBrioche/feeds/temperature"
 #define MQTT_TOPIC_SUBSCRIBE    "/estia/"GROUP_NAME"/downlink"
 #define SYNC_INTERVAL           1
 #define MQTT_CLIENT_ID          "6LoWPAN_Node_"GROUP_NAME
@@ -35,7 +36,7 @@ NetworkInterface *network;
 MQTTClient *client;
 
 // MQTT
-const char* hostname = "test.mosquitto.org";
+const char* hostname = "io.adafruit.com";
 int port = 1883;
 
 // Error code
@@ -93,34 +94,31 @@ static void yield(){
 }
 
 /*!
- *  \brief Publish data over the corresponding adafruit MQTT topic
+ *  \brief Publish data over a specified MQTT topic
  *
+ *  \param topic The MQTT topic to publish to
+ *  \param payload The message payload to send
+ *  \return int8_t 0 if successful, error code otherwise
  */
-static int8_t publish() {
-
-    char *mqttPayload = "Hello from 6TRON";
-
+static int8_t publish(const char* topic, const char* payload) {
     MQTT::Message message;
     message.qos = MQTT::QOS1;
     message.retained = false;
     message.dup = false;
-    message.payload = (void*)mqttPayload;
-    message.payloadlen = strlen(mqttPayload);
+    message.payload = (void*)payload;
+    message.payloadlen = strlen(payload);
 
-    printf("Send: %s to MQTT Broker: %s\n", mqttPayload, hostname);
-    rc = client->publish(MQTT_TOPIC_PUBLISH, message);
+    printf("Publishing to topic: %s, message: %s\n", topic, payload);
+    rc = client->publish(topic, message);
     if (rc != 0) {
-        printf("Failed to publish: %d\n", rc);
+        printf("Failed to publish to topic %s: %d\n", topic, rc);
         return rc;
     }
     return 0;
 }
 
 // main() runs in its own thread in the OS
-// (note the calls to ThisThread::sleep_for below for delays)
-
-int main()
-{
+int main() {
     printf("Connecting to border router...\n");
 
     /* Get Network configuration */
@@ -160,7 +158,7 @@ int main()
     client = new MQTTClient(&socket);
     socket.open(network);
     rc = socket.connect(address);
-    if(rc != 0){
+    if (rc != 0) {
         printf("Connection to MQTT broker Failed\n");
         return rc;
     }
@@ -168,26 +166,22 @@ int main()
     MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
     data.MQTTVersion = 4;
     data.keepAliveInterval = 25;
-    data.clientID.cstring = MQTT_CLIENT_ID;
-    if (client->connect(data) != 0){
+    data.username.cstring = "RoiBrioche";
+    data.password.cstring = ADAFRUITKEY;
+
+    if (client->connect(data) != 0) {
         printf("Connection to MQTT Broker Failed\n");
     }
 
     printf("Connected to MQTT broker\n");
 
-    /* MQTT Subscribe */
-    if ((rc = client->subscribe(MQTT_TOPIC_SUBSCRIBE, MQTT::QOS0, messageArrived)) != 0){
-        printf("rc from MQTT subscribe is %d\r\n", rc);
-    }
-    printf("Subscribed to Topic: %s\n", MQTT_TOPIC_SUBSCRIBE);
-
-    yield();
-
-    // Yield every 1 second
+    /* Yield every 1 second */
     id_yield = main_queue.call_every(SYNC_INTERVAL * 1000, yield);
 
-    // Publish
-    button.fall(main_queue.event(publish));
+    // Example of publishing
+    const char* example_topic = MQTT_TOPIC_TEMPERATURE; // Example topic
+    const char* example_payload = "25"; // Example payload
+    button.fall(main_queue.event(callback(publish, example_topic, example_payload)));
 
     main_queue.dispatch_forever();
 }
