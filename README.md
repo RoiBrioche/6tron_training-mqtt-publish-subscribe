@@ -1,3 +1,45 @@
+#Présentation Station météo
+
+#Dashboard
+Lien du DashBoard : https://io.adafruit.com/RoiBrioche/dashboards/dashboard-brieuc-mandin-et-benjamin-roche
+
+#Température
+Image du DashBoard pour la partie température
+![image](https://github.com/user-attachments/assets/186a7b33-4b26-4478-8fca-11e4111e0616)
+
+On peut voir l'évolution de la valeur de la température au cour du temps à droite, au centre la température actuel et a droite un warning qui alerte dans le cas ou l'on dépace les 55°C.
+
+Ensuite les fonctionnement sont les même mais sans warning.
+#Humidity
+![image](https://github.com/user-attachments/assets/431f52d8-c287-4a8e-8d26-4069c2a37b3c)
+
+#Pressure
+![image](https://github.com/user-attachments/assets/4f94a0c8-ab6e-424a-8555-f31702f4c8b3)
+
+
+Le code est globalement commenter pour que l'on comprène les différentes section.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Basic MQTT example
 
 Basic Mbed OS MQTT example.
