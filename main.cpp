@@ -113,61 +113,59 @@ static void yield(){
 static int8_t publish() {
 
 
-    char mqttPayload[16] ;
+    // Envoi de la température
+    char mqttPayload_temperature[16];
+    sprintf(mqttPayload_temperature, "%1f", sensor.temperature()); // Remplacez par la méthode correcte si ce n'est pas "temperature"
 
-    sprintf(mqttPayload,"%1f",sensor.temperature());
+    MQTT::Message message_temperature;
+    message_temperature.qos = MQTT::QOS1;
+    message_temperature.retained = false;
+    message_temperature.dup = false;
+    message_temperature.payload = (void*)mqttPayload_temperature;
+    message_temperature.payloadlen = strlen(mqttPayload_temperature);
 
-    MQTT::Message message;
-    message.qos = MQTT::QOS1;
-    message.retained = false;
-    message.dup = false;
-    message.payload = (void*)mqttPayload;
-    message.payloadlen = strlen(mqttPayload);
-
-    printf("Send: %s to MQTT Broker: %s\n", mqttPayload, hostname);
-    rc = client->publish(MQTT_TOPIC_TEMPERATURE, message);
+    printf("Send: %s to MQTT Broker: %s\n", mqttPayload_temperature, hostname);
+    rc = client->publish(MQTT_TOPIC_TEMPERATURE, message_temperature);
     if (rc != 0) {
-        printf("Failed to publish: %d\n", rc);
+        printf("Failed to publish temperature: %d\n", rc);
         return rc;
     }
 
-    /*
-    char mqttPayload_humidity[16] ;
+    // Envoi de l'humidité
+    char mqttPayload_humidity[16];
+    sprintf(mqttPayload_humidity, "%1f", sensor.humidity()); // Remplacez par la méthode correcte si ce n'est pas "humidity"
 
-    sprintf(mqttPayload_humidity,"%1f",sensor.temperature());
-
-    MQTT::Message message;
-    message.qos = MQTT::QOS1;
-    message.retained = false;
-    message.dup = false;
-    message.payload = (void*)mqttPayload_humidity;
-    message.payloadlen = strlen(mqttPayload_humidity);
+    MQTT::Message message_humidity;
+    message_humidity.qos = MQTT::QOS1;
+    message_humidity.retained = false;
+    message_humidity.dup = false;
+    message_humidity.payload = (void*)mqttPayload_humidity;
+    message_humidity.payloadlen = strlen(mqttPayload_humidity);
 
     printf("Send: %s to MQTT Broker: %s\n", mqttPayload_humidity, hostname);
-    rc = client->publish(MQTT_TOPIC_HUMIDITY, message);
+    rc = client->publish(MQTT_TOPIC_HUMIDITY, message_humidity);
     if (rc != 0) {
-        printf("Failed to publish: %d\n", rc);
+        printf("Failed to publish humidity: %d\n", rc);
         return rc;
     }
 
+    // Envoi de la pression
+    char mqttPayload_pressure[16];
+    sprintf(mqttPayload_pressure, "%1f", (sensor.pressure()/100)); // Remplacez par la méthode correcte si ce n'est pas "pressure"
 
-    char mqttPayload_pressure[16] ;
-
-    sprintf(mqttPayload_pressure,"%1f",sensor.temperature());
-
-    MQTT::Message message;
-    message.qos = MQTT::QOS1;
-    message.retained = false;
-    message.dup = false;
-    message.payload = (void*)mqttPayload_pressure;
-    message.payloadlen = strlen(mqttPayload_pressure);
+    MQTT::Message message_pressure;
+    message_pressure.qos = MQTT::QOS1;
+    message_pressure.retained = false;
+    message_pressure.dup = false;
+    message_pressure.payload = (void*)mqttPayload_pressure;
+    message_pressure.payloadlen = strlen(mqttPayload_pressure);
 
     printf("Send: %s to MQTT Broker: %s\n", mqttPayload_pressure, hostname);
-    rc = client->publish(MQTT_TOPIC_PRESSURE, message);
+    rc = client->publish(MQTT_TOPIC_PRESSURE, message_pressure);
     if (rc != 0) {
-        printf("Failed to publish: %d\n", rc);
+        printf("Failed to publish pressure: %d\n", rc);
         return rc;
-    }*/
+    }
 
 
     return 0;
