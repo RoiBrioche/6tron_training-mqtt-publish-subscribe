@@ -183,6 +183,15 @@ int main()
     
     printf("Connecting to border router...\n");
 
+    if (sensor.temperature() < 55)
+    {
+        led = 0;
+    }
+    else
+    {
+        led = 1;
+    }
+
     /* Get Network configuration */
     network = NetworkInterface::get_default_instance();
 
@@ -250,7 +259,7 @@ int main()
     id_yield = main_queue.call_every(SYNC_INTERVAL * 1000, yield);
     
     // Publish
-    ticker.attach(main_queue.event(publish),5s);
+    ticker.attach(main_queue.event(publish),30s);
 
 
     main_queue.dispatch_forever();
