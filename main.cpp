@@ -15,17 +15,28 @@
  * limitations under the License.
  */
 #include "mbed.h"
+#include "bme280.h"
 #include <nsapi_dns.h>
 #include <MQTTClientMbedOs.h>
 #include "key.h"
 
+float temperature;
+float humidity;
+float pressure; 
+using namespace sixtron;
+
 namespace {
-#define GROUP_NAME            "ABCD"
-#define MQTT_TOPIC_TEMPERATURE      "RoiBrioche/feeds/temperature"
-#define MQTT_TOPIC_SUBSCRIBE    "/estia/"GROUP_NAME"/downlink"
+    
+
 #define SYNC_INTERVAL           1
-#define MQTT_CLIENT_ID          "6LoWPAN_Node_"GROUP_NAME
+#define MQTT_TOPIC_TEMPERATURE  "RoiBrioche/feeds/temperature"
+#define MQTT_TOPIC_HUMIDITY  "RoiBrioche/feeds/humidity"
+#define MQTT_TOPIC_PRESSURE  "RoiBrioche/feeds/pressure"
+
 }
+
+I2C bus(I2C1_SDA, I2C1_SCL);
+BME280 sensor(&bus, BME280::I2CAddress::Address1);
 
 // Peripherals
 static DigitalOut led(LED1);
@@ -45,6 +56,8 @@ nsapi_size_or_error_t rc = 0;
 // Event queue
 static int id_yield;
 static EventQueue main_queue(32 * EVENTS_EVENT_SIZE);
+
+Ticker ticker;
 
 /*!
  *  \brief Called when a message is received
@@ -94,31 +107,82 @@ static void yield(){
 }
 
 /*!
- *  \brief Publish data over a specified MQTT topic
+ *  \brief Publish data over the corresponding adafruit MQTT topic
  *
- *  \param topic The MQTT topic to publish to
- *  \param payload The message payload to send
- *  \return int8_t 0 if successful, error code otherwise
  */
-static int8_t publish(const char* topic, const char* payload) {
+static int8_t publish() {
+
+
+    char mqttPayload[16] ;
+
+    sprintf(mqttPayload,"%1f",sensor.temperature());
+
     MQTT::Message message;
     message.qos = MQTT::QOS1;
     message.retained = false;
     message.dup = false;
-    message.payload = (void*)payload;
-    message.payloadlen = strlen(payload);
+    message.payload = (void*)mqttPayload;
+    message.payloadlen = strlen(mqttPayload);
 
-    printf("Publishing to topic: %s, message: %s\n", topic, payload);
-    rc = client->publish(topic, message);
+    printf("Send: %s to MQTT Broker: %s\n", mqttPayload, hostname);
+    rc = client->publish(MQTT_TOPIC_TEMPERATURE, message);
     if (rc != 0) {
-        printf("Failed to publish to topic %s: %d\n", topic, rc);
+        printf("Failed to publish: %d\n", rc);
         return rc;
     }
+
+    /*
+    char mqttPayload_humidity[16] ;
+
+    sprintf(mqttPayload_humidity,"%1f",sensor.temperature());
+
+    MQTT::Message message;
+    message.qos = MQTT::QOS1;
+    message.retained = false;
+    message.dup = false;
+    message.payload = (void*)mqttPayload_humidity;
+    message.payloadlen = strlen(mqttPayload_humidity);
+
+    printf("Send: %s to MQTT Broker: %s\n", mqttPayload_humidity, hostname);
+    rc = client->publish(MQTT_TOPIC_HUMIDITY, message);
+    if (rc != 0) {
+        printf("Failed to publish: %d\n", rc);
+        return rc;
+    }
+
+
+    char mqttPayload_pressure[16] ;
+
+    sprintf(mqttPayload_pressure,"%1f",sensor.temperature());
+
+    MQTT::Message message;
+    message.qos = MQTT::QOS1;
+    message.retained = false;
+    message.dup = false;
+    message.payload = (void*)mqttPayload_pressure;
+    message.payloadlen = strlen(mqttPayload_pressure);
+
+    printf("Send: %s to MQTT Broker: %s\n", mqttPayload_pressure, hostname);
+    rc = client->publish(MQTT_TOPIC_PRESSURE, message);
+    if (rc != 0) {
+        printf("Failed to publish: %d\n", rc);
+        return rc;
+    }*/
+
+
     return 0;
 }
 
 // main() runs in its own thread in the OS
-int main() {
+// (note the calls to ThisThread::sleep_for below for delays)
+
+int main()
+{
+    if (!sensor.initialize()) {
+        printf("BME280 init error!\n");
+    }
+    sensor.set_sampling();
+    
     printf("Connecting to border router...\n");
 
     /* Get Network configuration */
@@ -158,30 +222,38 @@ int main() {
     client = new MQTTClient(&socket);
     socket.open(network);
     rc = socket.connect(address);
-    if (rc != 0) {
+    if(rc != 0){
         printf("Connection to MQTT broker Failed\n");
         return rc;
     }
+    
 
     MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
     data.MQTTVersion = 4;
     data.keepAliveInterval = 25;
+    // data.clientID.cstring = MQTT_CLIENT_ID; // À SUPPRIMER
     data.username.cstring = "RoiBrioche";
     data.password.cstring = ADAFRUITKEY;
-
-    if (client->connect(data) != 0) {
+    if (client->connect(data) != 0){
         printf("Connection to MQTT Broker Failed\n");
     }
 
     printf("Connected to MQTT broker\n");
 
-    /* Yield every 1 second */
-    id_yield = main_queue.call_every(SYNC_INTERVAL * 1000, yield);
+    /* MQTT Subscribe */
+    /*if ((rc = client->subscribe(MQTT_TOPIC_SUBSCRIBE, MQTT::QOS0, messageArrived)) != 0){
+        printf("rc from MQTT subscribe is %d\r\n", rc);
+    }
+    printf("Subscribed to Topic: %s\n", MQTT_TOPIC_TEMPERATURE);*/
 
-    // Example of publishing
-    const char* example_topic = MQTT_TOPIC_TEMPERATURE; // Example topic
-    const char* example_payload = "25"; // Example payload
-    button.fall(main_queue.event(callback(publish, example_topic, example_payload)));
+    yield();
+
+    // Yield every 1 second
+    id_yield = main_queue.call_every(SYNC_INTERVAL * 1000, yield);
+    
+    // Publish
+    ticker.attach(main_queue.event(publish),5s);
+
 
     main_queue.dispatch_forever();
 }
